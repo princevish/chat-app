@@ -1,5 +1,4 @@
 const express = require("express");
-
 const http = require("http");
 const app = express();
 const { Server } = require("socket.io");
@@ -15,9 +14,9 @@ const io = new Server(server, {
 app.use(express.json());
 
 const messageLimit = 5;
+const messageTimeLimit = 5;
 const messageCounts = new Map();
 const CHAT_BOT = "ChatBot";
-let chatRoom = "";
 let allUsers = [];
 
 io.on("connection", (socket) => {
@@ -30,11 +29,19 @@ io.on("connection", (socket) => {
 
     let __createdtime__ = Date.now();
 
+    allUsers.push(data);
+
     socket.to(room).emit("receive_message", {
       message: `${username} has joined the chat room`,
       username: CHAT_BOT,
       __createdtime__,
     });
+
+    socket.emit(
+      "chatroom_users",
+      allUsers.filter((user) => user.room === room)
+    );
+
     socket.emit("receive_message", {
       message: `Welcome ${username}`,
       username: CHAT_BOT,
@@ -44,25 +51,22 @@ io.on("connection", (socket) => {
     socket.on("send_message", (data) => {
       const messageCount = messageCounts.get(clientIP) || 0;
       const countDate = new Date();
-      countDate.setMinutes(countDate.getMinutes() + 1);
+      countDate.setMinutes(countDate.getMinutes() + messageTimeLimit);
 
       if (messageCount >= messageLimit) {
         if (Date.now() >= Date.parse(countDate)) {
           messageCounts.delete(clientIP);
         }
-        const timeLeft = Date.parse(countDate) - Date.now();
         socket.emit(
           "rateLimitExceeded",
-          `You have reached the message limit. Please wait before ${new Date(
-            timeLeft
-          )} to sending more messages.`
+          `You have reached the message limit. Please wait before to sending more messages.`
         );
         return;
       }
 
       messageCounts.set(clientIP, messageCount + 1);
 
-      const { message, username, room, __createdtime__ } = data;
+      const { room } = data;
       io.in(room).emit("receive_message", data);
     });
 
@@ -70,11 +74,10 @@ io.on("connection", (socket) => {
       const { username, room } = data;
       socket.leave(room);
       const __createdtime__ = Date.now();
-
-      socket.to(room).emit(
-        "chatroom_users",
-        allUsers.filter((user) => user.room === room)
+      allUsers = allUsers.filter(
+        (user) => user.username !== username && user.room !== socket.room
       );
+      socket.to(room).emit("chatroom_users", allUsers);
       socket.to(room).emit("receive_message", {
         username: CHAT_BOT,
         message: `${username} has left the chat`,
@@ -83,13 +86,18 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("disconnect", () => {
+  socket.on("disconnect", (data) => {
+    const { username, room } = data;
     messageCounts.delete(clientIP);
-    const user = allUsers.find((user) => user.id == socket.id);
+    const user = allUsers.find(
+      (user) => user.username == username && user.room == socket.room
+    );
     if (user?.username) {
-      allUsers = leaveRoom(socket.id, allUsers);
-      socket.to(chatRoom).emit("chatroom_users", allUsers);
-      socket.to(chatRoom).emit("receive_message", {
+      allUsers = allUsers.filter(
+        (user) => user.username !== username && user.room !== socket.room
+      );
+      socket.to(room).emit("chatroom_users", allUsers);
+      socket.to(room).emit("receive_message", {
         message: `${user.username} has disconnected from the chat.`,
       });
     }

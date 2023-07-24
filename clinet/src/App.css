@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 html * {
   font-family: Arial;
   box-sizing: border-box;
@@ -30,11 +34,14 @@ body {
   font-size: 1.1rem;
   cursor: pointer;
   border: none;
+  width: 10%;
+  min-width: fit-content;
 }
 .btn-outline {
   color: rgb(153, 217, 234);
   border: 1px solid rgb(153, 217, 234);
   background: rgb(63, 73, 204);
+  margin: 10px;
 }
 .btn-primary {
   background: rgb(153, 217, 234);

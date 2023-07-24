@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import styles from "./styles.module.css";
 import { Socket } from "socket.io-client";
 
 interface HomeProps {
@@ -28,18 +27,30 @@ const Home: React.FC<HomeProps> = ({
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.formContainer}>
-        <h1>Rate-limited Chat Room</h1>
+    <div
+      className={
+        "min-h-screen w-full flex justify-center items-center bg-blue-500"
+      }
+    >
+      <div
+        className={
+          "w-400 mx-auto p-8 bg-sky-100 rounded-md flex flex-col items-center gap-7 border-2"
+        }
+      >
+        <h1 className={"text-3xl font-bold text-center"}>
+          Rate-limited Chat Room
+        </h1>
         <input
-          className={styles.input}
+          className={
+            "w-full p-3 rounded-md border border-blue-300 text-sm"
+          }
           placeholder="Username..."
           value={username}
           onChange={(e) => setUsername(e.target.value)}
         />
 
         <select
-          className={styles.input}
+          className={"w-full p-3 rounded-md border border-blue-500 text-sm"}
           value={room}
           onChange={(e) => setRoom(e.target.value)}
         >
@@ -51,9 +62,10 @@ const Home: React.FC<HomeProps> = ({
         </select>
 
         <button
-          className="btn btn-secondary"
+          className="px-4 py-4 rounded-md font-bold text-lg cursor-pointer border-none bg-blue-500 text-white"
           style={{ width: "100%" }}
           onClick={joinRoom}
+          disabled={room === "" || username === ""}
         >
           Join Room
         </button>
