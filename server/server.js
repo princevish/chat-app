@@ -20,8 +20,7 @@ const CHAT_BOT = "ChatBot";
 let allUsers = [];
 
 io.on("connection", (socket) => {
-  const clientIP = socket.request.connection.remoteAddress;
-  messageCounts.set(clientIP, 0);
+  messageCounts.set(socket.id, 0);
 
   socket.on("join_room", (data) => {
     const { username, room } = data;
@@ -29,14 +28,17 @@ io.on("connection", (socket) => {
 
     let __createdtime__ = Date.now();
 
-    allUsers.push(data);
+    allUsers.push({ ...data, id: socket.id });
 
     socket.to(room).emit("receive_message", {
       message: `${username} has joined the chat room`,
       username: CHAT_BOT,
       __createdtime__,
     });
-
+   socket.to(room).emit(
+      "chatroom_users",
+      allUsers.filter((user) => user.room === room)
+    );
     socket.emit(
       "chatroom_users",
       allUsers.filter((user) => user.room === room)
@@ -49,13 +51,13 @@ io.on("connection", (socket) => {
     });
 
     socket.on("send_message", (data) => {
-      const messageCount = messageCounts.get(clientIP) || 0;
+      const messageCount = messageCounts.get(socket.id) || 0;
       const countDate = new Date();
       countDate.setMinutes(countDate.getMinutes() + messageTimeLimit);
 
       if (messageCount >= messageLimit) {
         if (Date.now() >= Date.parse(countDate)) {
-          messageCounts.delete(clientIP);
+          messageCounts.delete(socket.id);
         }
         socket.emit(
           "rateLimitExceeded",
@@ -64,7 +66,7 @@ io.on("connection", (socket) => {
         return;
       }
 
-      messageCounts.set(clientIP, messageCount + 1);
+      messageCounts.set(socket.id, messageCount + 1);
 
       const { room } = data;
       io.in(room).emit("receive_message", data);
@@ -86,18 +88,17 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("disconnect", (data) => {
-    const { username, room } = data;
-    messageCounts.delete(clientIP);
+  socket.on("disconnect", () => {
+    messageCounts.delete(socket.id);
     const user = allUsers.find(
-      (user) => user.username == username && user.room == socket.room
+      (user) => user.id == socket.id
     );
     if (user?.username) {
       allUsers = allUsers.filter(
-        (user) => user.username !== username && user.room !== socket.room
+        (user) => user.id !== socket.id
       );
-      socket.to(room).emit("chatroom_users", allUsers);
-      socket.to(room).emit("receive_message", {
+      socket.to(user.room).emit("chatroom_users", allUsers);
+      socket.to(user.room).emit("receive_message", {
         message: `${user.username} has disconnected from the chat.`,
       });
     }
