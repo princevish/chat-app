@@ -26,7 +26,7 @@ const Messages: React.FC<MessagesProps> = ({ socket }) => {
           __createdtime__: data.__createdtime__,
         },
       ]);
-      messagesEndRef.current?.scroll({ top: messagesEndRef.current?.element.scrollHeight, behavior: 'smooth' });
+      messagesEndRef.current?.scroll({ top: messagesEndRef.current?.element?.scrollHeight, behavior: 'smooth' });
     });
 
     return () => {socket.off("receive_message");};
